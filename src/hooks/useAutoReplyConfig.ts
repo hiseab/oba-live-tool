@@ -128,28 +128,24 @@ interface AutoReplyConfigStore {
 
 export const useAutoReplyConfigStore = create<AutoReplyConfigStore>()(
   persist(
-    immer(set => {
+    immer((set, get) => {
       eventEmitter.on(EVENTS.ACCOUNT_REMOVED, (accountId: string) => {
         set(state => {
           delete state.contexts[accountId]
         })
       })
 
-      const ensureContext = (state: AutoReplyConfigStore, accountId: string) => {
-        if (!state.contexts[accountId]) {
-          state.contexts[accountId] = { config: createDefaultConfig() }
-        }
-        return state.contexts[accountId]
-      }
-
       return {
         contexts: {},
-        updateConfig: (accountId, configUpdates) =>
+        updateConfig: (accountId, configUpdates) => {
+          // Lodash mergeWith 无法安全遍历 Immer draft，必须先从普通 Store 快照合并。
+          const currentConfig = get().contexts[accountId]?.config ?? createDefaultConfig()
+          const newConfig = mergeWithoutArray(currentConfig, configUpdates)
+
           set(state => {
-            const context = ensureContext(state, accountId)
-            const newConfig = mergeWithoutArray(context.config, configUpdates)
-            context.config = newConfig
-          }),
+            state.contexts[accountId] = { config: newConfig }
+          })
+        },
       }
     }),
     {

@@ -76,7 +76,7 @@ export function OtherSetting() {
               <h4 className="text-sm font-medium leading-none">项目信息</h4>
               <p className="text-sm text-muted-foreground">了解更多项目相关内容</p>
             </div>
-            <div className="flex gap-2">
+            {/* <div className="flex gap-2">
               <Button variant="outline" size="sm" className="gap-2" onClick={handleOpenGitHub}>
                 <SimpleIconsGithub className="h-4 w-4" />
                 GitHub
@@ -87,7 +87,7 @@ export function OtherSetting() {
                 反馈问题
                 <ExternalLinkIcon className="h-4 w-4" />
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </CardContent>
