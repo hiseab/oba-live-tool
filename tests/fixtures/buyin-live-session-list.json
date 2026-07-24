@@ -1,0 +1,53 @@
+{
+  "st": 0,
+  "data": {
+    "data_head": [
+      { "index_name": "watch_ucnt", "index_display": "直播间观看人数" },
+      { "index_name": "avg_watch_duration", "index_display": "人均观看时长" },
+      { "index_name": "acu", "index_display": "平均在线人数" },
+      { "index_name": "product_click_rate", "index_display": "商品点击率(人数)" },
+      { "index_name": "pay_gmv", "index_display": "直播间成交金额" },
+      { "index_name": "pay_order_cnt", "index_display": "直播间成交订单数" },
+      { "index_name": "avg_hour_pay_amt", "index_display": "单小时GMV" },
+      { "index_name": "predict_commission", "index_display": "预估佣金收入" }
+    ],
+    "index_selected": [
+      "watch_ucnt",
+      "avg_watch_duration",
+      "acu",
+      "product_click_rate",
+      "pay_gmv",
+      "pay_order_cnt",
+      "avg_hour_pay_amt",
+      "predict_commission"
+    ],
+    "index_groups": [],
+    "data_result": [
+      {
+        "live_room": "测试直播间",
+        "cover_img_uri": "https://example.com/cover.jpg",
+        "start_time": {
+          "start_time": "2026/07/15 19:30",
+          "live_duration": "2小时15分30秒"
+        },
+        "watch_ucnt": "12,345",
+        "avg_watch_duration": "1分28秒",
+        "acu": "678",
+        "product_click_rate": "23.45%",
+        "pay_order_cnt": 321,
+        "pay_gmv": "¥45,678.90",
+        "avg_hour_pay_amt": "¥20,301.73",
+        "predict_commission": "¥3,456.78",
+        "operation": {
+          "live_id": "7345000000000000000",
+          "live_app_id": "1128"
+        }
+      }
+    ],
+    "page_result": {
+      "page_no": 1,
+      "page_size": 20,
+      "total": 1
+    }
+  }
+}

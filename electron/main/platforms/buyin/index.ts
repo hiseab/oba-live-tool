@@ -1,5 +1,7 @@
 import { Result } from '@praha/byethrow'
 import type { Page } from 'playwright'
+import type { LiveSessionDetailParams, LiveSessionListParams } from 'shared/liveDetails'
+import type { LiveReviewParams } from 'shared/liveReview'
 import type { PlatformError } from '#/errors/PlatformError'
 import type { BrowserSession } from '#/managers/BrowserSessionManager'
 import { DouyinPlatform } from '../douyin'
@@ -8,12 +10,16 @@ import { CompassListener, ControlListener } from '../douyin/commentListener'
 import { connect, ensurePage, openUrlByElement } from '../helper'
 import type {
   ICommentListener,
+  ILiveDetailProvider,
+  ILiveReviewProvider,
   IPerformComment,
   IPerformPopup,
   IPlatform,
   ISendRedPacket,
 } from '../IPlatform'
 import { REGEXPS, SELECTORS, URLS } from './constant'
+import { BuyinLiveDetailsSource } from './liveDetails'
+import { BuyinLiveReviewSource } from './liveReview'
 
 const PLATFORM_NAME = '巨量百应' as const
 
@@ -21,8 +27,17 @@ const PLATFORM_NAME = '巨量百应' as const
  * 巨量百应
  */
 export class BuyinPlatform
-  implements IPlatform, IPerformPopup, IPerformComment, ICommentListener, ISendRedPacket
+  implements
+    IPlatform,
+    IPerformPopup,
+    IPerformComment,
+    ICommentListener,
+    ISendRedPacket,
+    ILiveDetailProvider,
+    ILiveReviewProvider
 {
+  readonly _isLiveDetailProvider = true
+  readonly _isLiveReviewProvider = true
   readonly _isSendRedPacket = true
   readonly _isPerformComment = true
   readonly _isPerformPopup = true
@@ -30,6 +45,8 @@ export class BuyinPlatform
 
   private mainPage: Page | null = null
   private commentListener: ICommentListener | null = null
+  private liveDetailsSource: BuyinLiveDetailsSource | null = null
+  private liveReviewSource: BuyinLiveReviewSource | null = null
 
   get platformName() {
     return PLATFORM_NAME
@@ -71,8 +88,12 @@ export class BuyinPlatform
     return accountName ?? ''
   }
 
-  disconnect(): Promise<void> {
-    throw new Error('Method not implemented.')
+  async disconnect(): Promise<void> {
+    this.stopCommentListener()
+    await Promise.all([this.liveDetailsSource?.close(), this.liveReviewSource?.close()])
+    this.liveDetailsSource = null
+    this.liveReviewSource = null
+    this.mainPage = null
   }
 
   async performPopup(...args: Parameters<IPerformPopup['performPopup']>) {
@@ -118,6 +139,31 @@ export class BuyinPlatform
     return this.commentListener?.getCommentListenerPage() ?? this.mainPage
   }
 
+  async getLiveSessionList(params: LiveSessionListParams) {
+    return await this.getLiveDetailsSource().list(params)
+  }
+
+  async getLiveSessionDetail(params: LiveSessionDetailParams) {
+    return await this.getLiveDetailsSource().detail(params)
+  }
+
+  async getLiveReviewOverview(params: LiveReviewParams) {
+    return await this.getLiveReviewSource().overview(params)
+  }
+
+  private getLiveReviewSource(): BuyinLiveReviewSource {
+    const pageResult = ensurePage(this.mainPage)
+    if (Result.isFailure(pageResult)) throw pageResult.error
+    this.liveReviewSource ??= new BuyinLiveReviewSource(pageResult.value)
+    return this.liveReviewSource
+  }
+
+  private getLiveDetailsSource(): BuyinLiveDetailsSource {
+    const pageResult = ensurePage(this.mainPage)
+    if (Result.isFailure(pageResult)) throw pageResult.error
+    this.liveDetailsSource ??= new BuyinLiveDetailsSource(pageResult.value)
+    return this.liveDetailsSource
+  }
   getPopupPage() {
     return this.mainPage
   }

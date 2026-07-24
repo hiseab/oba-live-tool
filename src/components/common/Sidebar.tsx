@@ -1,5 +1,6 @@
+import { BarChart3, RadioTower } from 'lucide-react'
 import { NavLink } from 'react-router'
-import { abilities, autoReplyPlatforms } from '@/abilities'
+import { autoReplyPlatforms } from '@/abilities'
 import { useCurrentAutoMessage } from '@/hooks/useAutoMessage'
 import { useCurrentAutoPopUp } from '@/hooks/useAutoPopUp'
 import { useAutoReply } from '@/hooks/useAutoReply'
@@ -34,6 +35,18 @@ export default function Sidebar() {
       id: '/',
       name: '打开中控台',
       icon: <CarbonContentDeliveryNetwork className="w-5 h-5" />,
+    },
+    {
+      id: '/live-details',
+      name: '直播明细',
+      icon: <RadioTower className="h-5 w-5" />,
+      platform: ['buyin'],
+    },
+    {
+      id: '/live-review',
+      name: '直播复盘',
+      icon: <BarChart3 className="h-5 w-5" />,
+      platform: ['buyin'],
     },
     {
       id: '/auto-message',

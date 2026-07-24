@@ -1,5 +1,12 @@
 import type { Result } from '@praha/byethrow'
 import type { Page } from 'playwright'
+import type {
+  LiveSessionDetail,
+  LiveSessionDetailParams,
+  LiveSessionListParams,
+  LiveSessionPage,
+} from 'shared/liveDetails'
+import type { LiveReviewOverview, LiveReviewParams } from 'shared/liveReview'
 import type { PlatformError } from '#/errors/PlatformError'
 import type { BrowserSession } from '#/managers/BrowserSessionManager'
 
@@ -63,6 +70,28 @@ export interface ISendRedPacket {
 
 export function isSendRedPacket(platform: IPlatform): platform is IPlatform & ISendRedPacket {
   return '_isSendRedPacket' in platform && platform._isSendRedPacket === true
+}
+
+export interface ILiveDetailProvider {
+  _isLiveDetailProvider: true
+  getLiveSessionList(params: LiveSessionListParams): Promise<LiveSessionPage>
+  getLiveSessionDetail(params: LiveSessionDetailParams): Promise<LiveSessionDetail>
+}
+
+export function isLiveDetailProvider(
+  platform: IPlatform,
+): platform is IPlatform & ILiveDetailProvider {
+  return '_isLiveDetailProvider' in platform && platform._isLiveDetailProvider === true
+}
+export interface ILiveReviewProvider {
+  _isLiveReviewProvider: true
+  getLiveReviewOverview(params: LiveReviewParams): Promise<LiveReviewOverview>
+}
+
+export function isLiveReviewProvider(
+  platform: IPlatform,
+): platform is IPlatform & ILiveReviewProvider {
+  return '_isLiveReviewProvider' in platform && platform._isLiveReviewProvider === true
 }
 
 export interface IPlatform {

@@ -5,6 +5,8 @@ import AutoPopUp from '@/pages/AutoPopUp'
 import AutoReply from '@/pages/AutoReply'
 import AutoReplySettings from '@/pages/AutoReply/AutoReplySettings'
 import LiveControl from '@/pages/LiveControl'
+import LiveDetails from '@/pages/LiveDetails'
+import LiveReview from '@/pages/LiveReview'
 import RedPacket from '@/pages/RedPacket'
 import Settings from '@/pages/SettingsPage'
 import App from '../App'
@@ -17,6 +19,14 @@ export const router = createHashRouter([
       {
         path: '/',
         element: <LiveControl />,
+      },
+      {
+        path: '/live-details',
+        element: <LiveDetails />,
+      },
+      {
+        path: '/live-review',
+        element: <LiveReview />,
       },
       {
         path: '/auto-message',

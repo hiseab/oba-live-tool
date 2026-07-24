@@ -6,6 +6,13 @@ export const IPC_CHANNELS = {
       disconnect: 'tasks:liveControl:disconnect',
       disconnectedEvent: 'tasks:liveControl:disconnectedEvent',
     },
+    liveDetails: {
+      list: 'tasks:liveDetails:list',
+      detail: 'tasks:liveDetails:detail',
+    },
+    liveReview: {
+      overview: 'tasks:liveReview:overview',
+    },
     autoMessage: {
       start: 'tasks:autoMessage:start',
       stop: 'tasks:autoMessage:stop',

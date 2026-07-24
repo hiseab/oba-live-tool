@@ -1,0 +1,89 @@
+{
+  "basic": {
+    "st": 0,
+    "data": {
+      "live_room_base_info": {
+        "live_room_id": "7345000000000000000",
+        "live_room_title": "测试直播间",
+        "cover_img_uri": "https://example.com/cover.jpg",
+        "start_time": "2026-07-15 19:30:00",
+        "live_duration": "02:15:30",
+        "anchor_name": "测试达人"
+      }
+    }
+  },
+  "trade": {
+    "st": 0,
+    "data": {
+      "trade_list": [
+        {
+          "index_name": "pay_gmv",
+          "index_display": "成交金额",
+          "value": "¥45,678.90"
+        },
+        {
+          "index_name": "pay_order_cnt",
+          "index_display": "成交订单数",
+          "value": 321
+        }
+      ]
+    }
+  },
+  "core": {
+    "st": 0,
+    "data": {
+      "index_group": [
+        {
+          "group_name": "flow",
+          "group_display": "流量表现",
+          "index_list": [
+            {
+              "index_name": "watch_ucnt",
+              "index_display": "观看人数",
+              "value": "12,345"
+            },
+            {
+              "index_name": "avg_watch_duration",
+              "index_display": "平均观看时长",
+              "value": "1分28秒"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "products": {
+    "st": 0,
+    "data": {
+      "products_detail": [
+        {
+          "product_id": "99887766",
+          "product_name": "测试商品",
+          "product_img": "https://example.com/product.jpg",
+          "pay_amt": "¥12,345.00",
+          "pay_order_cnt": 88,
+          "explain_cnt": 3,
+          "products_card": [
+            {
+              "index_name": "product_click_ucnt",
+              "index_display": "商品点击人数",
+              "index_value": {
+                "value": "456"
+              }
+            },
+            {
+              "index_name": "product_show_ucnt",
+              "index_display": "商品曝光人数",
+              "index_value": "1,234"
+            }
+          ]
+        }
+      ],
+      "page_result": {
+        "page_no": 1,
+        "page_size": 20,
+        "total": 1
+      }
+    }
+  }
+}

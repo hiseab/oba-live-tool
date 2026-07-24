@@ -1,5 +1,7 @@
 import { Result } from '@praha/byethrow'
 import { IPC_CHANNELS } from 'shared/ipcChannels'
+import type { LiveSessionDetailParams, LiveSessionListParams } from 'shared/liveDetails'
+import type { LiveReviewParams } from 'shared/liveReview'
 import { TaskNotSupportedError } from '#/errors/AppError'
 import { emitter } from '#/event/eventBus'
 import { createLogger } from '#/logger'
@@ -12,6 +14,8 @@ import { platformFactory } from '#/platforms'
 import {
   type IPlatform,
   isCommentListener,
+  isLiveDetailProvider,
+  isLiveReviewProvider,
   isPerformComment,
   isPerformPopup,
   isPinComment,
@@ -85,6 +89,9 @@ export class AccountSession {
   disconnect() {
     this.logger.warn('与中控台断开连接')
     // 通过程序关闭浏览器（并非多余的操作，因为 MacOS 的 context 关闭时不会关闭浏览器进程）
+    if (isLiveDetailProvider(this.platform) || isLiveReviewProvider(this.platform)) {
+      void this.platform.disconnect().catch(e => this.logger.error('清理平台资源失败：', e))
+    }
     this.browserSession?.browser.close().catch(e => this.logger.error('无法关闭浏览器：', e))
     // 关闭所有正在进行的任务
     Array.from(this.activeTasks.values()).forEach(task => {
@@ -120,6 +127,35 @@ export class AccountSession {
     }
   }
 
+  public async getLiveSessionList(params: LiveSessionListParams) {
+    if (!isLiveDetailProvider(this.platform)) {
+      throw new TaskNotSupportedError({
+        taskName: '直播明细',
+        targetName: this.platform.platformName,
+      })
+    }
+    return await this.platform.getLiveSessionList(params)
+  }
+
+  public async getLiveSessionDetail(params: LiveSessionDetailParams) {
+    if (!isLiveDetailProvider(this.platform)) {
+      throw new TaskNotSupportedError({
+        taskName: '直播明细',
+        targetName: this.platform.platformName,
+      })
+    }
+    return await this.platform.getLiveSessionDetail(params)
+  }
+  public async getLiveReviewOverview(params: LiveReviewParams) {
+    if (!isLiveReviewProvider(this.platform)) {
+      throw new TaskNotSupportedError({
+        taskName: '直播复盘',
+        targetName: this.platform.platformName,
+      })
+    }
+    return await this.platform.getLiveReviewOverview(params)
+  }
+
   public async startTask(task: LiveControlTask): Result.ResultAsync<void, Error> {
     const newTask = makeTask(task, this.platform, this.account, this.logger)
     if (Result.isFailure(newTask)) {
@@ -145,7 +181,12 @@ export class AccountSession {
 
   public async sendRedPacket(duration: string): Result.ResultAsync<void, Error> {
     if (!isSendRedPacket(this.platform)) {
-      return Result.fail(new TaskNotSupportedError({ taskName: '一键发红包', targetName: this.platform.platformName }))
+      return Result.fail(
+        new TaskNotSupportedError({
+          taskName: '一键发红包',
+          targetName: this.platform.platformName,
+        }),
+      )
     }
     return this.platform.sendRedPacket(duration)
   }

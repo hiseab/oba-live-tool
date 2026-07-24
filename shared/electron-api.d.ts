@@ -1,6 +1,14 @@
 import type { LogMessage } from 'electron-log'
 import type { ProgressInfo, UpdateDownloadedEvent } from 'electron-updater'
 import { IPC_CHANNELS } from './ipcChannels'
+import type {
+  LiveDetailsResult,
+  LiveSessionDetail,
+  LiveSessionDetailParams,
+  LiveSessionListParams,
+  LiveSessionPage,
+} from './liveDetails'
+import type { LiveReviewOverview, LiveReviewParams, LiveReviewResult } from './liveReview'
 
 export interface IpcChannels {
   // LiveControl
@@ -22,6 +30,22 @@ export interface IpcChannels {
         }
       | { ok: false },
   ) => void
+
+  // LiveDetails
+  [IPC_CHANNELS.tasks.liveDetails.list]: (
+    accountId: string,
+    params: LiveSessionListParams,
+  ) => LiveDetailsResult<LiveSessionPage>
+  [IPC_CHANNELS.tasks.liveDetails.detail]: (
+    accountId: string,
+    params: LiveSessionDetailParams,
+  ) => LiveDetailsResult<LiveSessionDetail>
+
+  // LiveReview
+  [IPC_CHANNELS.tasks.liveReview.overview]: (
+    accountId: string,
+    params: LiveReviewParams,
+  ) => LiveReviewResult<LiveReviewOverview>
 
   // AutoMessage
   [IPC_CHANNELS.tasks.autoMessage.start]: (accountId: string, config: AutoCommentConfig) => boolean
