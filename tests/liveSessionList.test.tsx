@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
 // biome-ignore lint/correctness/noUnusedImports: tsx 当前测试执行模式需要 React 位于 JSX 作用域
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { test } from 'vitest'
 import type { LiveSessionSummary } from '../shared/liveDetails'
 import LiveSessionList from '../src/pages/LiveDetails/components/LiveSessionList'
 

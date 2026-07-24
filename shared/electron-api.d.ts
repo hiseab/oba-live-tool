@@ -9,6 +9,7 @@ import type {
   LiveSessionPage,
 } from './liveDetails'
 import type { LiveReviewOverview, LiveReviewParams, LiveReviewResult } from './liveReview'
+import type { PopupAlarmConfig } from './popupAlarm'
 
 export interface IpcChannels {
   // LiveControl
@@ -123,6 +124,10 @@ export interface IpcChannels {
 
   // 一键发红包
   [IPC_CHANNELS.tasks.redPacket.send]: (accountId: string, duration: string) => boolean
+
+  // Douyin popup alarm
+  [IPC_CHANNELS.popupAlarm.getConfig]: () => PopupAlarmConfig
+  [IPC_CHANNELS.popupAlarm.updateConfig]: (config: PopupAlarmConfig) => PopupAlarmConfig
 
   // Updater
   [IPC_CHANNELS.updater.checkUpdate]: () => Promise<

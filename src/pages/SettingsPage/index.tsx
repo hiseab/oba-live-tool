@@ -5,6 +5,7 @@ import { AccountSetting } from '@/pages/SettingsPage/components/AccountSetting'
 import { BrowserSetting } from '@/pages/SettingsPage/components/BrowserSetting'
 import { DevSetting } from '@/pages/SettingsPage/components/DevSetting'
 import { OtherSetting } from '@/pages/SettingsPage/components/OtherSetting'
+import { PopupAlarmSetting } from '@/pages/SettingsPage/components/PopupAlarmSetting'
 import { UpdateSetting } from '@/pages/SettingsPage/components/UpdateSetting'
 
 export default function Settings() {
@@ -28,6 +29,7 @@ export default function Settings() {
 
       <div className="space-y-8">
         <BrowserSetting />
+        <PopupAlarmSetting />
         <UpdateSetting />
         <AccountSetting />
         <DevSetting />

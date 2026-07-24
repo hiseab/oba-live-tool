@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
 import type { Page, Response } from 'playwright'
+import { test } from 'vitest'
 import * as liveDetailsSource from '../electron/main/platforms/buyin/liveDetails'
 import listFixture from './fixtures/buyin-live-session-list.json'
 

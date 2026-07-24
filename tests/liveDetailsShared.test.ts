@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import { test } from 'vitest'
 import * as liveDetails from '../shared/liveDetails'
 
 test('getLiveDetailsTransportErrorMessage normalizes renderer IPC failures', () => {

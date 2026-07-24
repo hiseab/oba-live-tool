@@ -63,6 +63,10 @@ export const IPC_CHANNELS = {
     toggleDevTools: 'chrome:toggleDevTools',
     saveState: 'chrome:saveState',
   },
+  popupAlarm: {
+    getConfig: 'popupAlarm:getConfig',
+    updateConfig: 'popupAlarm:updateConfig',
+  },
   updater: {
     checkUpdate: 'updater:checkUpdate',
     updateAvailable: 'updater:updateAvailable',

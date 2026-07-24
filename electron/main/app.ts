@@ -11,6 +11,10 @@ import windowManager from './windowManager'
 import './ipc'
 import { createLogger } from './logger'
 import { accountManager } from './managers/AccountManager'
+import { DouyinPopupAlarmService } from './services/DouyinPopupAlarmService'
+import { popupAlarmConfigService } from './services/PopupAlarmConfigService'
+import { PowerShellSpeechSynthesizer } from './services/PowerShellSpeechSynthesizer'
+import { WindowsPopupWindowProvider } from './services/WindowsPopupWindowProvider'
 
 // const _require = createRequire(import.meta.url)
 
@@ -57,6 +61,17 @@ function logStartupInfo() {
   const logger = createLogger('startup')
   logger.debug(createBoxedString(appInfo))
 }
+
+const popupAlarmLogger = createLogger('抖音弹窗报警')
+const popupAlarmSpeaker = new PowerShellSpeechSynthesizer(popupAlarmLogger)
+const popupWindowProvider = new WindowsPopupWindowProvider(popupAlarmLogger)
+const douyinPopupAlarmService = new DouyinPopupAlarmService({
+  windowProvider: () => popupWindowProvider.scan(),
+  stopWindowProvider: () => popupWindowProvider.stop(),
+  getConfig: () => popupAlarmConfigService.getConfig(),
+  speaker: popupAlarmSpeaker,
+  logger: popupAlarmLogger,
+})
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -136,8 +151,14 @@ async function createWindow() {
 app
   .whenReady()
   .then(logStartupInfo)
+  .then(() => popupAlarmConfigService.initialize())
   .then(() => providerService.initialize())
   .then(createWindow)
+  .then(() => douyinPopupAlarmService.start())
+
+app.on('before-quit', () => {
+  douyinPopupAlarmService.stop()
+})
 
 app.on('window-all-closed', async () => {
   win = null

@@ -8,6 +8,7 @@ import { setupLiveControlIpcHandlers } from './connection'
 import { setupLiveDetailsIpcHandlers } from './liveDetails'
 import { setupLiveReviewIpcHandlers } from './liveReview'
 import { setupPinCommentIpcHandler } from './pinComment'
+import { setupPopupAlarmIpcHandlers } from './popupAlarm'
 import { setupRedPacketIpcHandlers } from './redPacket'
 import { setupUpdateIpcHandlers } from './update'
 
@@ -22,4 +23,5 @@ setupBrowserIpcHandlers()
 setupAppIpcHandlers()
 setupUpdateIpcHandlers()
 setupPinCommentIpcHandler()
+setupPopupAlarmIpcHandlers()
 setupRedPacketIpcHandlers()
