@@ -9,7 +9,11 @@ import type {
   LiveSessionPage,
 } from './liveDetails'
 import type { LiveReviewOverview, LiveReviewParams, LiveReviewResult } from './liveReview'
-import type { PopupAlarmConfig } from './popupAlarm'
+import type {
+  PopupAlarmConfig,
+  PopupAlarmConnectionTarget,
+  PopupAlarmConnectionTestResult,
+} from './popupAlarm'
 
 export interface IpcChannels {
   // LiveControl
@@ -128,6 +132,9 @@ export interface IpcChannels {
   // Douyin popup alarm
   [IPC_CHANNELS.popupAlarm.getConfig]: () => PopupAlarmConfig
   [IPC_CHANNELS.popupAlarm.updateConfig]: (config: PopupAlarmConfig) => PopupAlarmConfig
+  [IPC_CHANNELS.popupAlarm.testConnection]: (
+    target: PopupAlarmConnectionTarget,
+  ) => PopupAlarmConnectionTestResult
 
   // Updater
   [IPC_CHANNELS.updater.checkUpdate]: () => Promise<

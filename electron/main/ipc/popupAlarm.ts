@@ -1,14 +1,18 @@
+import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from 'shared/ipcChannels'
+import { normalizePopupAlarmConnectionTarget } from 'shared/popupAlarm'
 import { popupAlarmConfigService } from '#/services/PopupAlarmConfigService'
-import { typedIpcMainHandle } from '#/utils'
+import { PopupAlarmNetworkClient } from '#/services/PopupAlarmNetworkClient'
 
-export function setupPopupAlarmIpcHandlers() {
-  typedIpcMainHandle(IPC_CHANNELS.popupAlarm.getConfig, () => {
-    return popupAlarmConfigService.getConfig()
-  })
+const testClient = new PopupAlarmNetworkClient()
 
-  typedIpcMainHandle(IPC_CHANNELS.popupAlarm.updateConfig, (_, config) => {
-    // 渲染进程输入不可信，持久化服务会再次执行完整校验和 trim。
-    return popupAlarmConfigService.updateConfig(config)
+export function setupPopupAlarmIpcHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.popupAlarm.getConfig, () => popupAlarmConfigService.getConfig())
+  ipcMain.handle(IPC_CHANNELS.popupAlarm.updateConfig, (_event, config: unknown) =>
+    popupAlarmConfigService.updateConfig(config),
+  )
+  ipcMain.handle(IPC_CHANNELS.popupAlarm.testConnection, async (_event, target: unknown) => {
+    const normalized = normalizePopupAlarmConnectionTarget(target, true)
+    return testClient.testConnection(normalized, popupAlarmConfigService.getClientId())
   })
 }

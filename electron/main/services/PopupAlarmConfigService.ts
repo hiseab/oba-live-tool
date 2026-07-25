@@ -24,6 +24,9 @@ export const popupAlarmConfigService = {
   getConfig(): PopupAlarmConfig {
     return getStore().getConfig()
   },
+  getClientId(): string {
+    return getStore().getClientId()
+  },
   updateConfig(config: unknown): Promise<PopupAlarmConfig> {
     return getStore().updateConfig(config)
   },

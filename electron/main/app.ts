@@ -13,7 +13,7 @@ import { createLogger } from './logger'
 import { accountManager } from './managers/AccountManager'
 import { DouyinPopupAlarmService } from './services/DouyinPopupAlarmService'
 import { popupAlarmConfigService } from './services/PopupAlarmConfigService'
-import { PowerShellSpeechSynthesizer } from './services/PowerShellSpeechSynthesizer'
+import { PopupAlarmNetworkClient } from './services/PopupAlarmNetworkClient'
 import { WindowsPopupWindowProvider } from './services/WindowsPopupWindowProvider'
 
 // const _require = createRequire(import.meta.url)
@@ -63,13 +63,14 @@ function logStartupInfo() {
 }
 
 const popupAlarmLogger = createLogger('抖音弹窗报警')
-const popupAlarmSpeaker = new PowerShellSpeechSynthesizer(popupAlarmLogger)
+const popupAlarmNetworkClient = new PopupAlarmNetworkClient()
 const popupWindowProvider = new WindowsPopupWindowProvider(popupAlarmLogger)
 const douyinPopupAlarmService = new DouyinPopupAlarmService({
   windowProvider: () => popupWindowProvider.scan(),
   stopWindowProvider: () => popupWindowProvider.stop(),
   getConfig: () => popupAlarmConfigService.getConfig(),
-  speaker: popupAlarmSpeaker,
+  getClientId: () => popupAlarmConfigService.getClientId(),
+  reporter: popupAlarmNetworkClient,
   logger: popupAlarmLogger,
 })
 

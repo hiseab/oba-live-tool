@@ -2,281 +2,181 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DouyinPopupAlarmService } from '../electron/main/services/DouyinPopupAlarmService'
+import {
+  DouyinPopupAlarmService,
+  type PopupAlarmReporter,
+} from '../electron/main/services/DouyinPopupAlarmService'
 import { PopupAlarmConfigStore } from '../electron/main/services/PopupAlarmConfigStore'
-import type { PopupAlarmSpeaker } from '../electron/main/services/PowerShellSpeechSynthesizer'
+import type { PopupAlarmStateMessage } from '../electron/main/services/PopupAlarmNetworkClient'
 import {
   DEFAULT_POPUP_ALARM_CONFIG,
   formatPopupAlarmSpeech,
   normalizeMachineLabel,
+  normalizePopupAlarmConfig,
 } from '../shared/popupAlarm'
 
-const logger = {
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
+const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+function reporter(): PopupAlarmReporter & { sendAlarmState: ReturnType<typeof vi.fn> } {
+  return { sendAlarmState: vi.fn().mockResolvedValue(undefined), stop: vi.fn() }
 }
-
-function createSpeaker(): PopupAlarmSpeaker & {
-  speak: ReturnType<typeof vi.fn>
-  stop: ReturnType<typeof vi.fn>
-} {
-  return {
-    speak: vi.fn().mockResolvedValue(true),
-    stop: vi.fn(),
-  }
-}
-
 async function advance(ms: number) {
   await vi.advanceTimersByTimeAsync(ms)
+  await Promise.resolve()
 }
 
 describe('popup alarm shared rules', () => {
-  it('formats numeric and custom machine labels', () => {
+  it('formats numeric and custom labels', () => {
     expect(formatPopupAlarmSpeech('3')).toBe('3号机器发现抖音验证弹窗')
     expect(formatPopupAlarmSpeech('直播间A')).toBe('直播间A发现抖音验证弹窗')
   })
-
-  it('trims and validates machine labels', () => {
-    expect(normalizeMachineLabel(' 直播间A ')).toBe('直播间A')
-    expect(() => normalizeMachineLabel('')).toThrow('机器标识不能为空')
-    expect(() => normalizeMachineLabel('   ')).toThrow('机器标识不能为空')
-    expect(() => normalizeMachineLabel('123456789012345678901')).toThrow(
-      '机器标识不能超过 20 个字符',
-    )
+  it('validates the full config', () => {
+    expect(
+      normalizePopupAlarmConfig({
+        machineLabel: ' 3 ',
+        serverHost: ' 192.168.1.2 ',
+        serverPort: '17891',
+      }),
+    ).toEqual({ machineLabel: '3', serverHost: '192.168.1.2', serverPort: 17891 })
+    expect(() => normalizeMachineLabel(' '.repeat(3))).toThrow()
+    expect(() => normalizeMachineLabel('a'.repeat(21))).toThrow()
+    expect(() =>
+      normalizePopupAlarmConfig({ machineLabel: '1', serverHost: 'http://x', serverPort: 1 }),
+    ).toThrow()
+    expect(() =>
+      normalizePopupAlarmConfig({ machineLabel: '1', serverHost: 'x', serverPort: 65536 }),
+    ).toThrow()
   })
 })
 
 describe('PopupAlarmConfigStore', () => {
-  let directory: string
-  let configPath: string
-
+  let dir: string
   beforeEach(async () => {
-    directory = await fs.mkdtemp(path.join(os.tmpdir(), 'oba-popup-alarm-'))
-    configPath = path.join(directory, 'popup-alarm-config.json')
-    vi.clearAllMocks()
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'popup-alarm-'))
   })
-
   afterEach(async () => {
-    await fs.rm(directory, { recursive: true, force: true })
+    await fs.rm(dir, { recursive: true, force: true })
   })
-
-  it('uses the default machine label when the config does not exist', async () => {
-    const store = new PopupAlarmConfigStore(configPath, logger)
-    await expect(store.initialize()).resolves.toEqual(DEFAULT_POPUP_ALARM_CONFIG)
-    expect(logger.warn).toHaveBeenCalled()
+  it('creates defaults and a stable client id when missing', async () => {
+    const file = path.join(dir, 'config.json')
+    const first = new PopupAlarmConfigStore(file, logger, () => 'client-1')
+    expect(await first.initialize()).toEqual(DEFAULT_POPUP_ALARM_CONFIG)
+    expect(first.getClientId()).toBe('client-1')
+    const second = new PopupAlarmConfigStore(file, logger, () => 'client-2')
+    await second.initialize()
+    expect(second.getClientId()).toBe('client-1')
   })
-
-  it('persists a normalized label and reloads it', async () => {
-    const store = new PopupAlarmConfigStore(configPath, logger)
-    await store.initialize()
-    await expect(store.updateConfig({ machineLabel: ' 直播间A ' })).resolves.toEqual({
-      machineLabel: '直播间A',
-    })
-
-    const reloaded = new PopupAlarmConfigStore(configPath, logger)
-    await expect(reloaded.initialize()).resolves.toEqual({ machineLabel: '直播间A' })
-  })
-
-  it('rejects invalid renderer input in the main-process store', async () => {
-    const store = new PopupAlarmConfigStore(configPath, logger)
-    await store.initialize()
-
-    await expect(store.updateConfig({ machineLabel: '   ' })).rejects.toThrow('机器标识不能为空')
-    await expect(store.updateConfig({ machineLabel: '123456789012345678901' })).rejects.toThrow(
-      '机器标识不能超过 20 个字符',
+  it('migrates old config and persists updates', async () => {
+    const file = path.join(dir, 'config.json')
+    await fs.writeFile(file, JSON.stringify({ machineLabel: ' 直播间A ' }))
+    const store = new PopupAlarmConfigStore(file, logger, () => 'client-x')
+    expect(await store.initialize()).toEqual(
+      DEFAULT_POPUP_ALARM_CONFIG.machineLabel === '1'
+        ? { machineLabel: '直播间A', serverHost: '', serverPort: 17891 }
+        : DEFAULT_POPUP_ALARM_CONFIG,
     )
+    expect(
+      await store.updateConfig({ machineLabel: '3', serverHost: 'server', serverPort: 19000 }),
+    ).toEqual({ machineLabel: '3', serverHost: 'server', serverPort: 19000 })
+    expect(JSON.parse(await fs.readFile(file, 'utf8')).clientId).toBe('client-x')
   })
-
-  it('falls back to defaults when the config file is damaged', async () => {
-    await fs.writeFile(configPath, '{not-json', 'utf8')
-    const store = new PopupAlarmConfigStore(configPath, logger)
-
-    await expect(store.initialize()).resolves.toEqual(DEFAULT_POPUP_ALARM_CONFIG)
-    expect(logger.warn).toHaveBeenCalled()
+  it('falls back from damaged config', async () => {
+    const file = path.join(dir, 'config.json')
+    await fs.writeFile(file, '{bad')
+    const store = new PopupAlarmConfigStore(file, logger, () => 'fallback')
+    expect(await store.initialize()).toEqual(DEFAULT_POPUP_ALARM_CONFIG)
   })
 })
 
 describe('DouyinPopupAlarmService', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.setSystemTime(0)
     vi.clearAllMocks()
   })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('does not speak when no matching window exists', async () => {
-    const speaker = createSpeaker()
-    const service = new DouyinPopupAlarmService({
-      windowProvider: vi.fn().mockResolvedValue([{ name: '普通窗口' }]),
-      getConfig: () => ({ machineLabel: '1' }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
-    service.start()
-    await advance(5_000)
-    expect(speaker.speak).not.toHaveBeenCalled()
-    service.stop()
-  })
-
-  it('speaks immediately on detection and repeats after 10 seconds', async () => {
-    const speaker = createSpeaker()
-    const service = new DouyinPopupAlarmService({
-      windowProvider: vi.fn().mockResolvedValue([{ name: '  人机交互 - 抖音  ' }]),
-      getConfig: () => ({ machineLabel: '3' }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
+  afterEach(() => vi.useRealTimers())
+  const config = { machineLabel: '3', serverHost: '10.0.0.5', serverPort: 17891 }
+  function create(windows: () => Promise<{ name: string }[]>, r = reporter()) {
+    return {
+      r,
+      service: new DouyinPopupAlarmService({
+        windowProvider: windows,
+        getConfig: () => config,
+        getClientId: () => 'client-1',
+        reporter: r,
+        logger,
+        platform: 'win32',
+        createAlarmId: () => 'alarm-1',
+      }),
+    }
+  }
+  it('sends immediately, heartbeats every 5 seconds, then clears', async () => {
+    let active = true
+    const { service, r } = create(vi.fn(async () => (active ? [{ name: '人机交互' }] : [])))
     service.start()
     await advance(1_000)
-    expect(speaker.speak).toHaveBeenCalledTimes(1)
-    expect(speaker.speak).toHaveBeenLastCalledWith('3号机器发现抖音验证弹窗')
-
-    await advance(9_000)
-    expect(speaker.speak).toHaveBeenCalledTimes(1)
+    expect(r.sendAlarmState).toHaveBeenCalledWith(
+      expect.objectContaining({ popupActive: true, alarmId: 'alarm-1', machineLabel: '3' }),
+    )
+    await advance(4_000)
+    expect(r.sendAlarmState).toHaveBeenCalledTimes(1)
     await advance(1_000)
-    expect(speaker.speak).toHaveBeenCalledTimes(2)
+    expect(r.sendAlarmState).toHaveBeenCalledTimes(2)
+    active = false
+    await advance(1_000)
+    expect(r.sendAlarmState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ popupActive: false, alarmId: 'alarm-1' }),
+    )
     service.stop()
   })
-
-  it('uses one alarm cycle for multiple matching windows', async () => {
-    const speaker = createSpeaker()
-    const service = new DouyinPopupAlarmService({
-      windowProvider: vi
-        .fn()
-        .mockResolvedValue([{ name: '人机交互' }, { name: '另一个人机交互窗口' }]),
-      getConfig: () => ({ machineLabel: '1' }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
-    service.start()
-    await advance(10_000)
-    expect(speaker.speak).toHaveBeenCalledTimes(1)
-    await advance(1_000)
-    expect(speaker.speak).toHaveBeenCalledTimes(2)
-    service.stop()
-  })
-
-  it('resets after disappearance and alarms immediately when the popup returns', async () => {
-    const speaker = createSpeaker()
+  it('uses one cycle for multiple windows and recovers after scan failure', async () => {
     const windows = vi
       .fn()
-      .mockResolvedValueOnce([{ name: '人机交互' }])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ name: '人机交互' }])
-    const service = new DouyinPopupAlarmService({
-      windowProvider: windows,
-      getConfig: () => ({ machineLabel: '1' }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
-    service.start()
-    await advance(3_000)
-    expect(speaker.speak).toHaveBeenCalledTimes(2)
-    service.stop()
-  })
-
-  it('continues scanning after one provider failure', async () => {
-    const speaker = createSpeaker()
-    const windows = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('capture failed'))
-      .mockResolvedValueOnce([{ name: '人机交互' }])
-    const service = new DouyinPopupAlarmService({
-      windowProvider: windows,
-      getConfig: () => ({ machineLabel: '1' }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
+      .mockRejectedValueOnce(new Error('failed'))
+      .mockResolvedValue([{ name: '人机交互' }, { name: '另一个人机交互' }])
+    const { service, r } = create(windows)
     service.start()
     await advance(2_000)
     expect(logger.error).toHaveBeenCalled()
-    expect(speaker.speak).toHaveBeenCalledTimes(1)
+    expect(r.sendAlarmState).toHaveBeenCalledTimes(1)
     service.stop()
   })
-
-  it('prevents overlapping asynchronous scans', async () => {
-    const speaker = createSpeaker()
-    let resolveScan: ((sources: { name: string }[]) => void) | undefined
+  it('does not overlap asynchronous scans', async () => {
+    let resolve!: (v: { name: string }[]) => void
     const windows = vi.fn(
       () =>
-        new Promise<{ name: string }[]>(resolve => {
-          resolveScan = resolve
+        new Promise<{ name: string }[]>(r => {
+          resolve = r
         }),
     )
-    const service = new DouyinPopupAlarmService({
-      windowProvider: windows,
-      getConfig: () => ({ machineLabel: '1' }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
+    const { service } = create(windows)
     service.start()
     await advance(3_000)
     expect(windows).toHaveBeenCalledTimes(1)
-    resolveScan?.([])
+    resolve([])
     await Promise.resolve()
     await advance(1_000)
     expect(windows).toHaveBeenCalledTimes(2)
     service.stop()
   })
-
-  it('uses an updated machine label on the next repeated alarm', async () => {
-    const speaker = createSpeaker()
-    let machineLabel = '1'
-    const service = new DouyinPopupAlarmService({
-      windowProvider: vi.fn().mockResolvedValue([{ name: '人机交互' }]),
-      getConfig: () => ({ machineLabel }),
-      speaker,
-      logger,
-      platform: 'win32',
-    })
-
-    service.start()
-    await advance(1_000)
-    machineLabel = '直播间A'
-    await advance(10_000)
-
-    expect(speaker.speak).toHaveBeenNthCalledWith(1, '1号机器发现抖音验证弹窗')
-    expect(speaker.speak).toHaveBeenNthCalledWith(2, '直播间A发现抖音验证弹窗')
-    service.stop()
-  })
-
-  it('keeps start and stop idempotent and disables itself outside Windows', async () => {
-    const speaker = createSpeaker()
+  it('does nothing outside Windows and keeps lifecycle idempotent', async () => {
+    const r = reporter()
+    const stop = vi.fn()
     const windows = vi.fn().mockResolvedValue([{ name: '人机交互' }])
-    const stopWindowProvider = vi.fn()
     const service = new DouyinPopupAlarmService({
       windowProvider: windows,
-      stopWindowProvider,
-      getConfig: () => ({ machineLabel: '1' }),
-      speaker,
+      stopWindowProvider: stop,
+      getConfig: () => config,
+      getClientId: () => 'c',
+      reporter: r,
       logger,
       platform: 'darwin',
     })
-
     service.start()
     service.start()
     await advance(5_000)
     expect(windows).not.toHaveBeenCalled()
-    expect(logger.warn).toHaveBeenCalled()
     service.stop()
     service.stop()
-    expect(stopWindowProvider).toHaveBeenCalledTimes(1)
-    expect(speaker.stop).toHaveBeenCalledTimes(1)
+    expect(stop).toHaveBeenCalledTimes(1)
+    expect(r.stop).toHaveBeenCalledTimes(1)
   })
 })

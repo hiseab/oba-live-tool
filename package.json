@@ -21,7 +21,9 @@
     "prepare": "husky",
     "bump": "bumpp --no-commit --no-tag --no-push && changelogen --output",
     "release": "node ./scripts/release",
-    "slow-server": "node ./scripts/slow-server.js"
+    "slow-server": "node ./scripts/slow-server.js",
+    "alarm-server:test": "powershell -ExecutionPolicy Bypass -File ../popup-alarm-server/test.ps1",
+    "alarm-server:build": "powershell -ExecutionPolicy Bypass -File ../popup-alarm-server/build.ps1"
   },
   "dependencies": {
     "electron-updater": "6.6.2",

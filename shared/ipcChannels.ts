@@ -66,6 +66,7 @@ export const IPC_CHANNELS = {
   popupAlarm: {
     getConfig: 'popupAlarm:getConfig',
     updateConfig: 'popupAlarm:updateConfig',
+    testConnection: 'popupAlarm:testConnection',
   },
   updater: {
     checkUpdate: 'updater:checkUpdate',
