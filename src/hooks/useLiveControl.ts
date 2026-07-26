@@ -11,12 +11,15 @@ interface LiveControlContext {
   isConnected: ConnectionStatus
   accountName: string | null
   platform: LiveControlPlatform
+  /** 连接成功后自动启动直播任务，默认关闭（ADR-0007） */
+  autoStart: boolean
 }
 
 interface LiveControlActions {
   setIsConnected: (accountId: string, connected: ConnectionStatus) => void
   setAccountName: (accountId: string, name: string | null) => void
   setPlatform: (accountId: string, platform: LiveControlPlatform) => void
+  setAutoStart: (accountId: string, autoStart: boolean) => void
 }
 
 type LiveControlStore = LiveControlActions & {
@@ -28,6 +31,7 @@ function defaultContext(): LiveControlContext {
     isConnected: 'disconnected',
     accountName: null,
     platform: 'douyin',
+    autoStart: false,
   }
 }
 
@@ -66,20 +70,28 @@ export const useLiveControlStore = create<LiveControlStore>()(
             const context = ensureContext(state, accountId)
             context.platform = platform
           }),
+        setAutoStart: (accountId, autoStart) =>
+          set(state => {
+            const context = ensureContext(state, accountId)
+            context.autoStart = autoStart
+          }),
       }
     }),
     {
       name: 'live-control-storage',
       partialize: state => {
-        const contexts: Record<string, Pick<LiveControlContext, 'platform'>> = {}
+        const contexts: Record<string, Pick<LiveControlContext, 'platform' | 'autoStart'>> = {}
         for (const key in state.contexts) {
-          contexts[key] = { platform: state.contexts[key].platform }
+          contexts[key] = {
+            platform: state.contexts[key].platform,
+            autoStart: state.contexts[key].autoStart,
+          }
         }
         return { contexts }
       },
       merge: (_persistedState, currentState) => {
         const persistedState = _persistedState as {
-          contexts: Record<string, Pick<LiveControlContext, 'platform'>>
+          contexts: Record<string, Pick<LiveControlContext, 'platform' | 'autoStart'>>
         }
         const mergedContexts: Record<string, LiveControlContext> = {}
         for (const key in persistedState.contexts ?? {}) {
@@ -101,6 +113,7 @@ export const useCurrentLiveControlActions = () => {
   const setIsConnected = useLiveControlStore(state => state.setIsConnected)
   const setAccountName = useLiveControlStore(state => state.setAccountName)
   const setPlatform = useLiveControlStore(state => state.setPlatform)
+  const setAutoStart = useLiveControlStore(state => state.setAutoStart)
   const currentAccountId = useAccounts(state => state.currentAccountId)
   return useMemo(
     () => ({
@@ -113,8 +126,11 @@ export const useCurrentLiveControlActions = () => {
       setPlatform: (platform: LiveControlPlatform) => {
         setPlatform(currentAccountId, platform)
       },
+      setAutoStart: (autoStart: boolean) => {
+        setAutoStart(currentAccountId, autoStart)
+      },
     }),
-    [currentAccountId, setIsConnected, setAccountName, setPlatform],
+    [currentAccountId, setIsConnected, setAccountName, setPlatform, setAutoStart],
   )
 }
 

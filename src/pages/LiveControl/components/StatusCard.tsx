@@ -8,6 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useAutoMessageStore } from '@/hooks/useAutoMessage'
+import { useAutoPopUpStore } from '@/hooks/useAutoPopUp'
+import { useAutoReplyStore } from '@/hooks/useAutoReply'
+import { useAutoReplyConfigStore } from '@/hooks/useAutoReplyConfig'
+import { runAutoStart, summarizeAutoStart, supportsAutoStart } from '@/hooks/useAutoStart'
 import { useCurrentChromeConfig, useCurrentChromeConfigActions } from '@/hooks/useChromeConfig'
 import { useCurrentLiveControl, useCurrentLiveControlActions } from '@/hooks/useLiveControl'
 import { useToast } from '@/hooks/useToast'
@@ -76,11 +81,67 @@ const StatusCard = React.memo(() => {
           <StatusAlert />
           <Separator />
           <HeadlessSetting />
+          <AutoStartSetting />
         </div>
       </CardContent>
     </Card>
   )
 })
+
+/**
+ * 连接成功后自动启动直播任务（ADR-0007）。
+ * 配置一律从 store 快照读取，避免把 StatusCard 订阅到四个 store 上。
+ */
+const useAutoStartOnConnect = () => {
+  const { toast } = useToast()
+
+  return useMemoizedFn(async (accountId: string) => {
+    const invoke = window.ipcRenderer.invoke.bind(window.ipcRenderer)
+
+    const results = await runAutoStart({
+      autoMessage: async () => {
+        const config = useAutoMessageStore.getState().contexts[accountId]?.config
+        if (!config) throw new Error('尚未配置自动发言')
+        const ok = await invoke(IPC_CHANNELS.tasks.autoMessage.start, accountId, config)
+        if (!ok) throw new Error('启动失败，请检查话术配置')
+        useAutoMessageStore.getState().setIsRunning(accountId, true)
+      },
+      autoPopUp: async () => {
+        const config = useAutoPopUpStore.getState().contexts[accountId]?.config
+        if (!config) throw new Error('尚未配置自动弹窗')
+        const ok = await invoke(IPC_CHANNELS.tasks.autoPopUp.start, accountId, config)
+        if (!ok) throw new Error('启动失败，请检查商品配置')
+        useAutoPopUpStore.getState().setIsRunning(accountId, true)
+      },
+      commentListener: async () => {
+        const config = useAutoReplyConfigStore.getState().contexts[accountId]?.config
+        const replyStore = useAutoReplyStore.getState()
+        replyStore.setIsListening(accountId, 'waiting')
+        try {
+          const ok = await invoke(IPC_CHANNELS.tasks.autoReply.startCommentListener, accountId, {
+            source: config?.entry ?? 'control',
+            ws: config?.ws?.enable ? { port: config.ws.port } : undefined,
+          })
+          if (!ok) throw new Error('监听评论失败')
+          replyStore.setIsListening(accountId, 'listening')
+        } catch (error) {
+          replyStore.setIsListening(accountId, 'error')
+          throw error
+        }
+      },
+      // 自动回复纯渲染层，只置标志位；必须在评论监听之后
+      autoReply: async () => {
+        useAutoReplyStore.getState().setIsRunning(accountId, true)
+      },
+    })
+
+    const { succeeded, failed } = summarizeAutoStart(results)
+    if (succeeded.length > 0) toast.success(`已自动启动：${succeeded.join('、')}`)
+    for (const { name, error } of failed) {
+      toast.error(error ? `${name}自动启动失败：${error}` : `${name}自动启动失败`)
+    }
+  })
+}
 
 const ConnectToLiveControl = React.memo(() => {
   const { setIsConnected } = useCurrentLiveControlActions()
@@ -90,6 +151,8 @@ const ConnectToLiveControl = React.memo(() => {
   const storageState = useCurrentChromeConfig(context => context.storageState)
   let headless = useCurrentChromeConfig(context => context.headless)
   const account = useAccounts(store => store.getCurrentAccount())
+  const autoStart = useCurrentLiveControl(context => context.autoStart)
+  const runAutoStartTasks = useAutoStartOnConnect()
 
   if (platform === 'taobao') {
     headless = false
@@ -115,6 +178,9 @@ const ConnectToLiveControl = React.memo(() => {
       if (result) {
         setIsConnected('connected')
         toast.success('已连接到直播控制台')
+        if (autoStart && supportsAutoStart(platform)) {
+          await runAutoStartTasks(account.id)
+        }
       } else {
         throw new Error('连接直播控制台失败')
       }
@@ -222,6 +288,32 @@ const HeadlessSetting = () => {
         checked={headless && platform !== 'taobao'}
         disabled={platform === 'taobao' || isConnected !== 'disconnected'}
         onCheckedChange={v => setHeadless(v)}
+      />
+    </div>
+  )
+}
+
+const AutoStartSetting = () => {
+  const autoStart = useCurrentLiveControl(context => context.autoStart)
+  const platform = useCurrentLiveControl(context => context.platform)
+  const isConnected = useCurrentLiveControl(context => context.isConnected)
+  const { setAutoStart } = useCurrentLiveControlActions()
+  const supported = supportsAutoStart(platform)
+
+  return (
+    <div className="flex justify-between items-center">
+      <div>
+        <div className="text-sm">连接后自动启动任务</div>
+        <div className="text-muted-foreground text-xs">
+          {supported
+            ? '连接成功后依次开启自动发言、自动弹窗、评论监听和自动回复'
+            : '当前平台不支持自动回复，无法使用自动启动'}
+        </div>
+      </div>
+      <Switch
+        checked={supported && autoStart}
+        disabled={!supported || isConnected === 'connecting'}
+        onCheckedChange={v => setAutoStart(v)}
       />
     </div>
   )
