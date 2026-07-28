@@ -157,16 +157,32 @@ export class AccountSession {
   }
 
   public async startTask(task: LiveControlTask): Result.ResultAsync<void, Error> {
+    const runningTask = this.activeTasks.get(task.type)
+    if (runningTask?.isRunning()) {
+      // 启动接口保持幂等，避免前端状态不同步或重复触发时创建多个并行循环。
+      this.logger.warn(`忽略重复启动：任务 ${task.type} 已在运行`)
+      return Result.succeed()
+    }
+
     const newTask = makeTask(task, this.platform, this.account, this.logger)
     if (Result.isFailure(newTask)) {
       return newTask
     }
-    // 任务停止时从任务列表中移除
-    newTask.value.addStopListener(() => {
-      this.activeTasks.delete(task.type)
+
+    const taskInstance = newTask.value
+    // 必须在 start 前登记：部分任务的 onStart 会异步运行，重复请求可能同时进入。
+    this.activeTasks.set(task.type, taskInstance)
+    taskInstance.addStopListener(() => {
+      // 只移除自己，防止迟到的停止回调误删之后启动的新任务。
+      if (this.activeTasks.get(task.type) === taskInstance) {
+        this.activeTasks.delete(task.type)
+      }
     })
-    await newTask.value.start()
-    this.activeTasks.set(task.type, newTask.value)
+
+    await taskInstance.start()
+    if (!taskInstance.isRunning() && this.activeTasks.get(task.type) === taskInstance) {
+      this.activeTasks.delete(task.type)
+    }
     return Result.succeed()
   }
 

@@ -93,7 +93,10 @@ export class DouyinPlatform
   async performComment(message: string, pinTop: boolean) {
     return Result.pipe(
       ensurePage(this.mainPage),
-      Result.andThen(page => comment(page, elementFinder, message, pinTop)),
+      Result.andThen(page =>
+        // 抖音会对发送区的高频 click 做操作风控；键盘提交不触发讲解卡点击告警。
+        comment(page, elementFinder, message, pinTop, { submitMethod: 'enter' }),
+      ),
     )
   }
 

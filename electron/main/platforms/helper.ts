@@ -41,11 +41,20 @@ export async function getAccountName(page: Page, accountNameSelector: string) {
   return page.waitForSelector(accountNameSelector).then(el => el.textContent())
 }
 
+export interface CommentOptions {
+  /**
+   * 评论提交方式。抖音中控台使用 Enter，避免对发送区派发合成 click
+   * 被平台误判为高频点击操作。
+   */
+  submitMethod?: 'button' | 'enter'
+}
+
 export async function comment(
   page: Page,
   elementFinder: IElementFinder,
   message: string,
   pinTop?: boolean,
+  options: CommentOptions = {},
 ): Result.ResultAsync<boolean, PlatformError> {
   async function clickPinTopButton(page: Page): Result.ResultAsync<boolean, PlatformError> {
     return Result.pipe(
@@ -65,12 +74,25 @@ export async function comment(
     // 点击置顶选项
     Result.andThen(_ => (pinTop ? clickPinTopButton(page) : Result.succeed(false))),
     // 发送评论
-    Result.andThrough(_ =>
-      Result.pipe(
-        // 直接点击发送评论按钮
+    Result.andThrough(_ => {
+      if (options.submitMethod === 'enter') {
+        return Result.pipe(
+          elementFinder.getCommentTextarea(page),
+          Result.andThen(textarea =>
+            Result.try({
+              try: () => textarea.press('Enter'),
+              catch: error => new UnexpectedError({ cause: error }),
+              immediate: true,
+            }),
+          ),
+        )
+      }
+
+      return Result.pipe(
+        // 默认直接点击发送评论按钮
         elementFinder.getClickableSubmitCommentButton(page),
         Result.inspect(btn => btn.dispatchEvent('click')),
-        // 下策：尝试直接用 Enter 发送评论
+        // 找不到按钮时，尝试直接用 Enter 发送评论
         Result.orElse(err => {
           if (err.name === 'ElementNotFoundError') {
             return Result.pipe(
@@ -86,8 +108,8 @@ export async function comment(
           }
           return Result.fail(err)
         }),
-      ),
-    ),
+      )
+    }),
   )
 }
 
