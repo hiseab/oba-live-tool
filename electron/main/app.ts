@@ -15,6 +15,10 @@ import { DouyinPopupAlarmService } from './services/DouyinPopupAlarmService'
 import { popupAlarmConfigService } from './services/PopupAlarmConfigService'
 import { PopupAlarmNetworkClient } from './services/PopupAlarmNetworkClient'
 import { WindowsPopupWindowProvider } from './services/WindowsPopupWindowProvider'
+import {
+  getWorkstationConnectionBuildConfig,
+  WorkstationConnectionService,
+} from './services/WorkstationConnectionService'
 
 // const _require = createRequire(import.meta.url)
 
@@ -72,6 +76,14 @@ const douyinPopupAlarmService = new DouyinPopupAlarmService({
   getClientId: () => popupAlarmConfigService.getClientId(),
   reporter: popupAlarmNetworkClient,
   logger: popupAlarmLogger,
+})
+const workstationConnectionService = new WorkstationConnectionService({
+  config: getWorkstationConnectionBuildConfig(),
+  getIdentity: () => ({
+    workstationId: popupAlarmConfigService.getClientId(),
+    machineLabel: popupAlarmConfigService.getConfig().machineLabel,
+  }),
+  logger: createLogger('工作机连接'),
 })
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -132,8 +144,9 @@ async function createWindow() {
     win.loadFile(indexHtml)
   }
 
-  // 加载完成后检查更新
+  // 渲染进程加载完成后再连接，让连接状态显示在运行日志中
   win.webContents.on('did-finish-load', async () => {
+    workstationConnectionService.start()
     await updateManager.silentCheckForUpdate()
   })
 
@@ -158,6 +171,7 @@ app
   .then(() => douyinPopupAlarmService.start())
 
 app.on('before-quit', () => {
+  workstationConnectionService.stop()
   douyinPopupAlarmService.stop()
 })
 

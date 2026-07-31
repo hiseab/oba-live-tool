@@ -3,17 +3,18 @@ import path from 'node:path'
 import process from 'node:process'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
   rmSync('dist-electron', { recursive: true, force: true })
 
   const isServe = command === 'serve'
   const isBuild = command === 'build'
   const sourcemap = isServe || !!process.env.VSCODE_DEBUG
+  const env = loadEnv(mode, process.cwd(), '')
 
   return {
     resolve: {
@@ -37,6 +38,14 @@ export default defineConfig(({ command }) => {
             }
           },
           vite: {
+            define: {
+              __OBA_WORKSTATION_WS_SIGN_URL__: JSON.stringify(
+                env.OBA_WORKSTATION_WS_SIGN_URL || '',
+              ),
+              __OBA_WORKSTATION_WS_ACCESS_KEY__: JSON.stringify(
+                env.OBA_WORKSTATION_WS_ACCESS_KEY || '',
+              ),
+            },
             build: {
               sourcemap: true,
               minify: false, // 开启前后差距大概 100kb

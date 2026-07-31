@@ -1,0 +1,2 @@
+declare const __OBA_WORKSTATION_WS_SIGN_URL__: string
+declare const __OBA_WORKSTATION_WS_ACCESS_KEY__: string
