@@ -15,10 +15,7 @@ import { DouyinPopupAlarmService } from './services/DouyinPopupAlarmService'
 import { popupAlarmConfigService } from './services/PopupAlarmConfigService'
 import { PopupAlarmNetworkClient } from './services/PopupAlarmNetworkClient'
 import { WindowsPopupWindowProvider } from './services/WindowsPopupWindowProvider'
-import {
-  getWorkstationConnectionBuildConfig,
-  WorkstationConnectionService,
-} from './services/WorkstationConnectionService'
+import { workstationConnectionService } from './services/workstationConnection'
 
 // const _require = createRequire(import.meta.url)
 
@@ -76,14 +73,6 @@ const douyinPopupAlarmService = new DouyinPopupAlarmService({
   getClientId: () => popupAlarmConfigService.getClientId(),
   reporter: popupAlarmNetworkClient,
   logger: popupAlarmLogger,
-})
-const workstationConnectionService = new WorkstationConnectionService({
-  config: getWorkstationConnectionBuildConfig(),
-  getIdentity: () => ({
-    workstationId: popupAlarmConfigService.getClientId(),
-    machineLabel: popupAlarmConfigService.getConfig().machineLabel,
-  }),
-  logger: createLogger('工作机连接'),
 })
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))

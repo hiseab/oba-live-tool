@@ -14,6 +14,11 @@ import type {
   PopupAlarmConnectionTarget,
   PopupAlarmConnectionTestResult,
 } from './popupAlarm'
+import type {
+  ProductChangeClientState,
+  ProductChangeErrorMessage,
+  ProductMaterialDownloadResult,
+} from './productChange'
 
 export interface IpcChannels {
   // LiveControl
@@ -136,6 +141,13 @@ export interface IpcChannels {
     target: PopupAlarmConnectionTarget,
   ) => PopupAlarmConnectionTestResult
 
+  // Workstation product change
+  [IPC_CHANNELS.productChange.getState]: () => ProductChangeClientState
+  [IPC_CHANNELS.productChange.request]: () => void
+  [IPC_CHANNELS.productChange.complete]: (changeId: string) => void
+  [IPC_CHANNELS.productChange.download]: (changeId: string) => ProductMaterialDownloadResult
+  [IPC_CHANNELS.productChange.updated]: (state: ProductChangeClientState) => void
+  [IPC_CHANNELS.productChange.error]: (error: ProductChangeErrorMessage) => void
   // Updater
   [IPC_CHANNELS.updater.checkUpdate]: () => Promise<
     { latestVersion: string; currentVersion: string; releaseNote?: string } | undefined

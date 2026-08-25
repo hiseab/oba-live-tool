@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  createVkWorkstationBusinessMessage,
   createVkWorkstationHandshake,
+  parseProductChangeSnapshot,
   requestWorkstationSignedUrl,
   WorkstationConnectionService,
   type WorkstationSignedUrl,
@@ -32,32 +34,44 @@ class FakeSocket {
   private openListeners: Array<() => void> = []
   private closeListeners: Array<(code: number, reason: Buffer) => void> = []
   private errorListeners: Array<(error: Error) => void> = []
+  private messageListeners: Array<(data: unknown) => void> = []
   readonly send = vi.fn()
   readonly close = vi.fn()
   readonly removeAllListeners = vi.fn(() => {
     this.openListeners = []
     this.closeListeners = []
     this.errorListeners = []
+    this.messageListeners = []
     return this
   })
 
   on(event: 'open', listener: () => void): this
   on(event: 'close', listener: (code: number, reason: Buffer) => void): this
   on(event: 'error', listener: (error: Error) => void): this
+  on(event: 'message', listener: (data: unknown) => void): this
   on(
-    event: 'open' | 'close' | 'error',
-    listener: (() => void) | ((code: number, reason: Buffer) => void) | ((error: Error) => void),
+    event: 'open' | 'close' | 'error' | 'message',
+    listener:
+      | (() => void)
+      | ((code: number, reason: Buffer) => void)
+      | ((error: Error) => void)
+      | ((data: unknown) => void),
   ): this {
     if (event === 'open') this.openListeners.push(listener as () => void)
     if (event === 'close') {
       this.closeListeners.push(listener as (code: number, reason: Buffer) => void)
     }
     if (event === 'error') this.errorListeners.push(listener as (error: Error) => void)
+    if (event === 'message') this.messageListeners.push(listener as (data: unknown) => void)
     return this
   }
 
   emitOpen(): void {
     for (const listener of this.openListeners) listener()
+  }
+
+  emitMessage(data: unknown): void {
+    for (const listener of this.messageListeners) listener(data)
   }
 
   emitClose(code = 1000, reason = ''): void {
@@ -270,5 +284,114 @@ describe('WorkstationConnectionService', () => {
     await waitForAsyncWork()
 
     expect(requestSignedUrl).toHaveBeenCalledOnce()
+  })
+})
+
+describe('product change protocol', () => {
+  it('wraps business messages in the non-uni-app VK envelope', () => {
+    const message = createVkWorkstationBusinessMessage(identity, signed, {
+      type: 'product_change.complete',
+      changeId: 'change-1',
+    })
+
+    expect(message).toEqual({
+      deviceId: identity.workstationId,
+      data: {
+        url: signed.cloudObjectUrl,
+        channel: signed.channel,
+        clientInfo: {
+          deviceId: identity.workstationId,
+          appid: signed.appid,
+          platform: 'windows',
+          locale: 'zh-CN',
+          os: 'windows',
+          userAgent: 'oba-live-tool',
+        },
+        data: { type: 'product_change.complete', changeId: 'change-1' },
+      },
+    })
+  })
+
+  it('rejects product change operations while disconnected', () => {
+    const service = new WorkstationConnectionService({
+      config: { signUrl: 'https://example.com/signedURL', accessKey: 'shared-key' },
+      getIdentity: () => identity,
+      logger: createLogger(),
+      requestSignedUrl: vi.fn(async () => signed),
+      createSocket: () => new FakeSocket(),
+    })
+
+    expect(() => service.requestProductChange()).toThrow(/未连接/)
+    expect(() => service.completeProductChange('change-1')).toThrow(/未连接/)
+  })
+
+  it('parses snapshots and ignores malformed snapshots', () => {
+    expect(
+      parseProductChangeSnapshot({
+        currentStatus: 'assigned',
+        activeChangeId: 'change-1',
+        changes: [
+          {
+            id: 'change-1',
+            workstationId: 'workstation-001',
+            status: 'assigned',
+            productId: 'product-1',
+            assignedBy: 'admin-1',
+            requestedAt: 1,
+            assignedAt: 2,
+            completedAt: null,
+            product: null,
+          },
+        ],
+      }),
+    ).toMatchObject({ currentStatus: 'assigned', activeChangeId: 'change-1' })
+    expect(parseProductChangeSnapshot({ currentStatus: 'unknown', changes: [] })).toBeNull()
+  })
+
+  it('updates cached state, emits errors, and keeps VK system messages out of business state', async () => {
+    const socket = new FakeSocket()
+    const logger = createLogger()
+    const service = new WorkstationConnectionService({
+      config: { signUrl: 'https://example.com/signedURL', accessKey: 'shared-key' },
+      getIdentity: () => identity,
+      logger,
+      requestSignedUrl: vi.fn(async () => signed),
+      createSocket: () => socket,
+    })
+    const states = vi.fn()
+    const errors = vi.fn()
+    service.onState(states)
+    service.onProductChangeError(errors)
+
+    service.start()
+    await waitForAsyncWork()
+    socket.emitOpen()
+    socket.emitMessage(JSON.stringify({ vkWebSocket: { type: 'connect' } }))
+    socket.emitMessage(
+      JSON.stringify({
+        type: 'product_change.snapshot',
+        data: { currentStatus: 'requested', activeChangeId: 'change-1', changes: [] },
+      }),
+    )
+    socket.emitMessage(
+      JSON.stringify({
+        type: 'product_change.error',
+        data: { operation: 'product_change.request', message: '重复请求' },
+      }),
+    )
+
+    expect(service.getState()).toEqual({
+      connected: true,
+      snapshot: { currentStatus: 'requested', activeChangeId: 'change-1', changes: [] },
+    })
+    expect(states).toHaveBeenCalled()
+    expect(errors).toHaveBeenCalledWith({
+      operation: 'product_change.request',
+      message: '重复请求',
+    })
+    expect(logger.debug).toHaveBeenCalledWith('收到 VK WebSocket 系统消息', {
+      type: 'connect',
+    })
+    service.stop()
   })
 })

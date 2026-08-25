@@ -1,4 +1,4 @@
-import { BarChart3, RadioTower } from 'lucide-react'
+import { BarChart3, PackageOpen, RadioTower } from 'lucide-react'
 import { NavLink } from 'react-router'
 import { autoReplyPlatforms } from '@/abilities'
 import { useCurrentAutoMessage } from '@/hooks/useAutoMessage'
@@ -72,6 +72,11 @@ export default function Sidebar() {
       name: '一键发红包',
       icon: <CarbonGift className="w-5 h-5" />,
       platform: ['douyin', 'buyin'],
+    },
+    {
+      id: '/product-elements',
+      name: '商品元素',
+      icon: <PackageOpen className="h-5 w-5" />,
     },
     {
       id: '/ai-chat',

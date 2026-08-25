@@ -68,6 +68,14 @@ export const IPC_CHANNELS = {
     updateConfig: 'popupAlarm:updateConfig',
     testConnection: 'popupAlarm:testConnection',
   },
+  productChange: {
+    getState: 'productChange:getState',
+    request: 'productChange:request',
+    complete: 'productChange:complete',
+    download: 'productChange:download',
+    updated: 'productChange:updated',
+    error: 'productChange:error',
+  },
   updater: {
     checkUpdate: 'updater:checkUpdate',
     updateAvailable: 'updater:updateAvailable',
