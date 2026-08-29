@@ -12,6 +12,7 @@ import './ipc'
 import { createLogger } from './logger'
 import { accountManager } from './managers/AccountManager'
 import { DouyinPopupAlarmService } from './services/DouyinPopupAlarmService'
+import { obsRealtimeDedupService } from './services/obsRealtimeDedup'
 import { popupAlarmConfigService } from './services/PopupAlarmConfigService'
 import { PopupAlarmNetworkClient } from './services/PopupAlarmNetworkClient'
 import { WindowsPopupWindowProvider } from './services/WindowsPopupWindowProvider'
@@ -159,9 +160,23 @@ app
   .then(createWindow)
   .then(() => douyinPopupAlarmService.start())
 
-app.on('before-quit', () => {
+let quitCleanupStarted = false
+let quitCleanupComplete = false
+
+app.on('before-quit', event => {
   workstationConnectionService.stop()
   douyinPopupAlarmService.stop()
+  if (quitCleanupComplete) return
+  event.preventDefault()
+  if (quitCleanupStarted) return
+  quitCleanupStarted = true
+  void obsRealtimeDedupService
+    .shutdown()
+    .catch(error => createLogger('OBS 实时去重').error('退出前恢复 OBS 状态失败', error))
+    .finally(() => {
+      quitCleanupComplete = true
+      app.quit()
+    })
 })
 
 app.on('window-all-closed', async () => {

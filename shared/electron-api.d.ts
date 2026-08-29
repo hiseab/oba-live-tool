@@ -1,5 +1,4 @@
 import type { LogMessage } from 'electron-log'
-import type { ProgressInfo, UpdateDownloadedEvent } from 'electron-updater'
 import { IPC_CHANNELS } from './ipcChannels'
 import type {
   LiveDetailsResult,
@@ -10,6 +9,12 @@ import type {
 } from './liveDetails'
 import type { LiveReviewOverview, LiveReviewParams, LiveReviewResult } from './liveReview'
 import type {
+  ObsConnectionSnapshot,
+  ObsRealtimeDedupConfig,
+  ObsRealtimeDedupState,
+  ObsRealtimeDedupStatus,
+} from './obsRealtimeDedup'
+import type {
   PopupAlarmConfig,
   PopupAlarmConnectionTarget,
   PopupAlarmConnectionTestResult,
@@ -19,6 +24,11 @@ import type {
   ProductChangeErrorMessage,
   ProductMaterialDownloadResult,
 } from './productChange'
+import type {
+  SoftwareUpdateError,
+  SoftwareUpdateProgressInfo,
+  SoftwareUpdateVersionInfo,
+} from './softwareUpdate'
 
 export interface IpcChannels {
   // LiveControl
@@ -141,6 +151,21 @@ export interface IpcChannels {
     target: PopupAlarmConnectionTarget,
   ) => PopupAlarmConnectionTestResult
 
+  // OBS realtime deduplication
+  [IPC_CHANNELS.obsRealtimeDedup.connect]: () => ObsConnectionSnapshot
+  [IPC_CHANNELS.obsRealtimeDedup.refreshSources]: () => ObsConnectionSnapshot
+  [IPC_CHANNELS.obsRealtimeDedup.start]: (
+    sourceUuid: string,
+    config: ObsRealtimeDedupConfig,
+  ) => ObsRealtimeDedupState
+  [IPC_CHANNELS.obsRealtimeDedup.updateConfig]: (
+    config: ObsRealtimeDedupConfig,
+  ) => ObsRealtimeDedupConfig
+  [IPC_CHANNELS.obsRealtimeDedup.stop]: () => ObsRealtimeDedupState
+  [IPC_CHANNELS.obsRealtimeDedup.getState]: () => ObsRealtimeDedupState
+  [IPC_CHANNELS.obsRealtimeDedup.stateChanged]: (state: ObsRealtimeDedupState) => void
+  [IPC_CHANNELS.obsRealtimeDedup.statusChanged]: (status: ObsRealtimeDedupStatus) => void
+
   // Workstation product change
   [IPC_CHANNELS.productChange.getState]: () => ProductChangeClientState
   [IPC_CHANNELS.productChange.request]: () => void
@@ -149,15 +174,12 @@ export interface IpcChannels {
   [IPC_CHANNELS.productChange.updated]: (state: ProductChangeClientState) => void
   [IPC_CHANNELS.productChange.error]: (error: ProductChangeErrorMessage) => void
   // Updater
-  [IPC_CHANNELS.updater.checkUpdate]: () => Promise<
-    { latestVersion: string; currentVersion: string; releaseNote?: string } | undefined
-  >
-  [IPC_CHANNELS.updater.startDownload]: (source: string) => void
+  [IPC_CHANNELS.updater.checkUpdate]: () => Promise<SoftwareUpdateVersionInfo | undefined>
+  [IPC_CHANNELS.updater.startDownload]: () => void
   [IPC_CHANNELS.updater.quitAndInstall]: () => void
-  [IPC_CHANNELS.updater.updateAvailable]: (info: VersionInfo) => void
-  [IPC_CHANNELS.updater.updateError]: (error: ErrorType) => void
-  [IPC_CHANNELS.updater.downloadProgress]: (progress: ProgressInfo) => void
-  [IPC_CHANNELS.updater.updateDownloaded]: (event?: UpdateDownloadedEvent) => void
+  [IPC_CHANNELS.updater.updateError]: (error: SoftwareUpdateError) => void
+  [IPC_CHANNELS.updater.downloadProgress]: (progress: SoftwareUpdateProgressInfo) => void
+  [IPC_CHANNELS.updater.updateDownloaded]: () => void
 
   // Chrome
   [IPC_CHANNELS.chrome.selectPath]: () => string | null
@@ -169,11 +191,7 @@ export interface IpcChannels {
   // App
   [IPC_CHANNELS.app.openLogFolder]: () => void
   [IPC_CHANNELS.app.openExternal]: (url: string) => void
-  [IPC_CHANNELS.app.notifyUpdate]: (arg: {
-    currentVersion: string
-    latestVersion: string
-    releaseNote?: string
-  }) => void
+  [IPC_CHANNELS.app.notifyUpdate]: (arg: SoftwareUpdateVersionInfo) => void
   [IPC_CHANNELS.app.getProviders]: () => Record<string, ProviderInfo>
   [IPC_CHANNELS.app.providersUpdated]: (providers: Record<string, ProviderInfo>) => void
 

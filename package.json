@@ -2,6 +2,7 @@
   "name": "oba-live-tool",
   "type": "module",
   "version": "1.6.1",
+  "internalVersion": 3,
   "private": true,
   "description": "直播工具，用于直播带货，能自动弹窗，自动发言",
   "author": "qiutongxue",
@@ -28,6 +29,7 @@
   "dependencies": {
     "electron-updater": "6.6.2",
     "framer-motion": "^12.42.2",
+    "obs-websocket-js": "^5.0.8",
     "playwright": "^1.50.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
@@ -108,11 +110,6 @@
   "lint-staged": {
     "*": [
       "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
-    ]
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron"
     ]
   }
 }

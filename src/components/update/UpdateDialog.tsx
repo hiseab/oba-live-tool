@@ -2,33 +2,12 @@ import { useMemoizedFn } from 'ahooks'
 import { Download, RefreshCw, Rocket } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { IPC_CHANNELS } from 'shared/ipcChannels'
-import { HtmlRenderer } from '@/components/common/HtmlRenderer'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useIpcListener } from '@/hooks/useIpc'
-import { useUpdateConfigStore, useUpdateStore } from '@/hooks/useUpdate'
-
-interface UpdateSource {
-  value: string
-  label: string
-}
-
-const updateSources: UpdateSource[] = [
-  { value: 'github', label: 'GitHub' },
-  { value: 'https://gh-proxy.com', label: 'gh-proxy.com' },
-  { value: 'https://ghproxy.net', label: 'ghproxy.net' },
-  { value: 'custom', label: '自定义' },
-]
+import { useUpdateStore } from '@/hooks/useUpdate'
 
 export function UpdateDialog() {
   const status = useUpdateStore.use.status()
@@ -41,10 +20,6 @@ export function UpdateDialog() {
   const error = useUpdateStore.use.error()
   const handleError = useUpdateStore.use.handleError()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const updateSource = useUpdateConfigStore(s => s.source)
-  const setUpdateSource = useUpdateConfigStore(s => s.setSource)
-  const customUpdateSource = useUpdateConfigStore(s => s.customSource)
-  const setCustomUpdateSource = useUpdateConfigStore(s => s.setCustomSource)
 
   useEffect(() => {
     if (status !== 'idle' && status !== 'checking') {
@@ -62,12 +37,15 @@ export function UpdateDialog() {
   }
 
   const quitAndInstall = async () => {
-    await window.ipcRenderer.invoke(IPC_CHANNELS.updater.quitAndInstall)
+    try {
+      await window.ipcRenderer.invoke(IPC_CHANNELS.updater.quitAndInstall)
+    } catch (error) {
+      handleError({ message: error instanceof Error ? error.message : String(error) })
+    }
   }
 
   const handleStartDownload = useMemoizedFn(() => {
-    const actualUpdateSource = updateSource === 'custom' ? customUpdateSource : updateSource
-    startDownload(actualUpdateSource)
+    startDownload()
   })
 
   useIpcListener(IPC_CHANNELS.updater.downloadProgress, info => {
@@ -120,8 +98,6 @@ export function UpdateDialog() {
     )
   })
 
-  const isCustom = updateSource === 'custom'
-
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
@@ -129,18 +105,15 @@ export function UpdateDialog() {
         <DialogDescription>现在更新以体验最新功能。</DialogDescription>
 
         {status !== 'error' && (
-          <>
-            <div className="flex justify-end space-x-1 items-center text-sm text-muted-foreground">
-              <span className="text-gray-400">v{updateInfo?.currentVersion}</span>
-              <span>{'→'}</span>
-              <span className="text-gray-700 font-bold">v{updateInfo?.latestVersion}</span>
-            </div>
-            {updateInfo?.releaseNote && (
-              <ScrollArea className="max-h-64">
-                <HtmlRenderer className="markdown-body" html={updateInfo?.releaseNote} />{' '}
-              </ScrollArea>
-            )}
-          </>
+          <div className="space-y-1 rounded-md border bg-muted/30 px-4 py-3 text-sm">
+            <p>当前版本：v{updateInfo?.currentVersion}</p>
+            <p className="text-muted-foreground">
+              内部版本：{updateInfo?.currentInternalVersion} →{' '}
+              <span className="font-semibold text-foreground">
+                {updateInfo?.latestInternalVersion}
+              </span>
+            </p>
+          </div>
         )}
         {/* 出错信息 */}
         {status === 'error' && error?.message && (
@@ -164,34 +137,7 @@ export function UpdateDialog() {
             <Progress value={progress} />
           </div>
         )}
-        <div className={`flex mt-4 ${isCustom ? 'flex-col gap-4' : 'justify-between gap-2'}`}>
-          <div className={`${isCustom ? 'w-full flex space-x-4' : ''}`}>
-            <Select value={updateSource} onValueChange={value => setUpdateSource(value)}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="选择更新源" />
-              </SelectTrigger>
-              <SelectContent>
-                {updateSources.map(source => (
-                  <SelectItem key={source.value} value={source.value}>
-                    {source.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isCustom && (
-              <div className="flex flex-col">
-                <Input
-                  value={customUpdateSource}
-                  onChange={e => setCustomUpdateSource(e.target.value)}
-                  placeholder="请输入自定义更新源地址"
-                  className="max-w-[400px]"
-                />
-                <p className="text-xs text-muted-foreground">
-                  请输入完整的URL地址，如：https://gh-proxy.com/
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="mt-4 flex justify-end gap-2">
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               关闭

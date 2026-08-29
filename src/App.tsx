@@ -23,6 +23,7 @@ import { useAutoPopUpStore } from './hooks/useAutoPopUp'
 import { useAutoReply, useAutoReplyStore } from './hooks/useAutoReply'
 import { useChromeConfigStore } from './hooks/useChromeConfig'
 import { useLiveControlStore } from './hooks/useLiveControl'
+import { useObsRealtimeDedupStore } from './hooks/useObsRealtimeDedup'
 import { useToast } from './hooks/useToast'
 import { useUpdateConfigStore, useUpdateStore } from './hooks/useUpdate'
 
@@ -35,6 +36,8 @@ function useGlobalIpcListener() {
   const setStorageState = useChromeConfigStore(s => s.setStorageState)
   const enableAutoCheckUpdate = useUpdateConfigStore(s => s.enableAutoCheckUpdate)
   const handleUpdate = useUpdateStore.use.handleUpdate()
+  const setObsRealtimeDedupRuntime = useObsRealtimeDedupStore.use.setRuntime()
+  const setObsRealtimeDedupStatus = useObsRealtimeDedupStore.use.setStatus()
   const { toast } = useToast()
 
   useIpcListener(IPC_CHANNELS.tasks.autoReply.showComment, ({ comment, accountId }) => {
@@ -75,11 +78,20 @@ function useGlobalIpcListener() {
       handleUpdate(info)
     }
   })
+
+  useIpcListener(IPC_CHANNELS.obsRealtimeDedup.stateChanged, state => {
+    setObsRealtimeDedupRuntime(state)
+  })
+
+  useIpcListener(IPC_CHANNELS.obsRealtimeDedup.statusChanged, status => {
+    setObsRealtimeDedupStatus(status)
+  })
 }
 
 function App() {
   const { enabled: devMode } = useDevMode()
   const { accounts, currentAccountId } = useAccounts()
+  const loadObsRealtimeDedupRuntime = useObsRealtimeDedupStore.use.loadRuntime()
 
   useEffect(() => {
     const account = accounts.find(acc => acc.id === currentAccountId)
@@ -87,6 +99,10 @@ function App() {
       window.ipcRenderer.invoke(IPC_CHANNELS.account.switch, { account })
     }
   }, [accounts, currentAccountId])
+
+  useEffect(() => {
+    void loadObsRealtimeDedupRuntime()
+  }, [loadObsRealtimeDedupRuntime])
 
   useGlobalIpcListener()
 

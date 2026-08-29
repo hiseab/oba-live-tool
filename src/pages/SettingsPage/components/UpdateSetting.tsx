@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { useUpdateConfigStore, useUpdateStore } from '@/hooks/useUpdate'
-import { version } from '../../../../package.json'
+import { internalVersion, version } from '../../../../package.json'
 
 export function UpdateSetting() {
   const { enableAutoCheckUpdate, setEnableAutoCheckUpdate } = useUpdateConfigStore()
@@ -32,8 +32,8 @@ export function UpdateSetting() {
           {/* 手动更新 */}
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <Label>更新源</Label>
-              <p className="text-sm text-muted-foreground">选择合适的更新源以获取最新版本</p>
+              <Label>检查升级</Label>
+              <p className="text-sm text-muted-foreground">从升级服务器读取内部版本号并检查更新</p>
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -73,7 +73,9 @@ export function UpdateSetting() {
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h4 className="text-sm font-medium leading-none">当前版本</h4>
-            <p className="text-sm text-muted-foreground">{version}</p>
+            <p className="text-sm text-muted-foreground">
+              {version}（内部版本 {internalVersion}）
+            </p>
           </div>
         </div>
       </CardContent>

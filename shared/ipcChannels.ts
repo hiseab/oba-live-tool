@@ -68,6 +68,16 @@ export const IPC_CHANNELS = {
     updateConfig: 'popupAlarm:updateConfig',
     testConnection: 'popupAlarm:testConnection',
   },
+  obsRealtimeDedup: {
+    connect: 'obsRealtimeDedup:connect',
+    refreshSources: 'obsRealtimeDedup:refreshSources',
+    start: 'obsRealtimeDedup:start',
+    updateConfig: 'obsRealtimeDedup:updateConfig',
+    stop: 'obsRealtimeDedup:stop',
+    getState: 'obsRealtimeDedup:getState',
+    stateChanged: 'obsRealtimeDedup:stateChanged',
+    statusChanged: 'obsRealtimeDedup:statusChanged',
+  },
   productChange: {
     getState: 'productChange:getState',
     request: 'productChange:request',
@@ -78,7 +88,6 @@ export const IPC_CHANNELS = {
   },
   updater: {
     checkUpdate: 'updater:checkUpdate',
-    updateAvailable: 'updater:updateAvailable',
     startDownload: 'updater:startDownload',
     downloadProgress: 'updater:downloadProgress',
     updateError: 'updater:updateError',

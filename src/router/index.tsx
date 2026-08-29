@@ -7,6 +7,7 @@ import AutoReplySettings from '@/pages/AutoReply/AutoReplySettings'
 import LiveControl from '@/pages/LiveControl'
 import LiveDetails from '@/pages/LiveDetails'
 import LiveReview from '@/pages/LiveReview'
+import ObsRealtimeDedup from '@/pages/ObsRealtimeDedup'
 import ProductElements from '@/pages/ProductElements'
 import RedPacket from '@/pages/RedPacket'
 import Settings from '@/pages/SettingsPage'
@@ -60,6 +61,10 @@ export const router = createHashRouter([
       {
         path: '/product-elements',
         element: <ProductElements />,
+      },
+      {
+        path: '/obs-realtime-dedup',
+        element: <ObsRealtimeDedup />,
       },
     ],
   },

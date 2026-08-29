@@ -7,6 +7,7 @@ import { setupAutoReplyIpcHandlers } from './commentListener'
 import { setupLiveControlIpcHandlers } from './connection'
 import { setupLiveDetailsIpcHandlers } from './liveDetails'
 import { setupLiveReviewIpcHandlers } from './liveReview'
+import { setupObsRealtimeDedupIpcHandlers } from './obsRealtimeDedup'
 import { setupPinCommentIpcHandler } from './pinComment'
 import { setupPopupAlarmIpcHandlers } from './popupAlarm'
 import { setupProductChangeIpcHandlers } from './productChange'
@@ -16,6 +17,7 @@ import { setupUpdateIpcHandlers } from './update'
 setupLiveControlIpcHandlers()
 setupLiveDetailsIpcHandlers()
 setupLiveReviewIpcHandlers()
+setupObsRealtimeDedupIpcHandlers()
 setupAIChatIpcHandlers()
 setupAutoPopUpIpcHandlers()
 setupAutoReplyIpcHandlers()

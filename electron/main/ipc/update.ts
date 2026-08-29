@@ -7,8 +7,8 @@ export function setupUpdateIpcHandlers() {
     return updateManager.checkUpdateVersion()
   })
 
-  typedIpcMainHandle(IPC_CHANNELS.updater.startDownload, (_, source) => {
-    updateManager.checkForUpdates(source)
+  typedIpcMainHandle(IPC_CHANNELS.updater.startDownload, () => {
+    return updateManager.checkForUpdates()
   })
 
   typedIpcMainHandle(IPC_CHANNELS.updater.quitAndInstall, () => {

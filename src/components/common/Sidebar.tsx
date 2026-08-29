@@ -1,10 +1,11 @@
-import { BarChart3, PackageOpen, RadioTower } from 'lucide-react'
+import { BarChart3, PackageOpen, RadioTower, WandSparkles } from 'lucide-react'
 import { NavLink } from 'react-router'
 import { autoReplyPlatforms } from '@/abilities'
 import { useCurrentAutoMessage } from '@/hooks/useAutoMessage'
 import { useCurrentAutoPopUp } from '@/hooks/useAutoPopUp'
 import { useAutoReply } from '@/hooks/useAutoReply'
 import { useCurrentLiveControl } from '@/hooks/useLiveControl'
+import { useObsRealtimeDedupStore } from '@/hooks/useObsRealtimeDedup'
 import { cn } from '@/lib/utils'
 import {
   CarbonBlockStorage,
@@ -29,6 +30,7 @@ export default function Sidebar() {
   const isAutoPopupRunning = useCurrentAutoPopUp(context => context.isRunning)
   const { isRunning: isAutoReplyRunning } = useAutoReply()
   const platform = useCurrentLiveControl(context => context.platform)
+  const isObsRealtimeDedupRunning = useObsRealtimeDedupStore.use.runtime().running
 
   const tabs: SidebarTab[] = [
     {
@@ -79,6 +81,12 @@ export default function Sidebar() {
       icon: <PackageOpen className="h-5 w-5" />,
     },
     {
+      id: '/obs-realtime-dedup',
+      name: 'OBS 实时去重',
+      isRunning: isObsRealtimeDedupRunning,
+      icon: <WandSparkles className="h-5 w-5" />,
+    },
+    {
       id: '/ai-chat',
       name: 'AI 助手',
       icon: <CarbonIbmWatsonTextToSpeech className="w-5 h-5" />,
@@ -98,7 +106,7 @@ export default function Sidebar() {
   })
 
   return (
-    <aside className="w-64 min-w-[256px] bg-background border-r">
+    <aside className="h-full w-64 min-w-[256px] overflow-y-auto overscroll-contain bg-background border-r">
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-6">功能列表</h2>
         <nav className="space-y-2">

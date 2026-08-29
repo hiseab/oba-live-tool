@@ -175,6 +175,15 @@ pnpm build
 ...
 ```
 
+#### OBS 实时去重
+
+1. 在 OBS 28 或更高版本中启用 WebSocket 服务，端口保持为 `4455`，并关闭身份认证。
+2. 预先安装提供 `shader_filter` 的 [obs-shaderfilter](https://github.com/exeldro/obs-shaderfilter) 插件并重启 OBS。
+3. 在工具侧边栏进入「OBS 实时去重」，连接 OBS、选择当前节目场景中的顶层源，然后启动。
+4. 启动会替换目标源上名为 `Color` 和 `Zoom Blur` 的同名滤镜；正常停止、切换场景或退出应用时会恢复启动前的源变换。
+
+强制结束进程、系统断电或 OBS 提前退出时无法保证恢复原始变换。
+
 #### WebSocket 服务
 
 WebSocket 功能负责将监听到的评论信息广播到所有连接的客户端。可以在自动回复的设置页面中开启 WebSocket 服务，并配置相应的端口号。开启 WebSocket 并点击「开始监听」后，应用会自行启动 WebSocket **服务端**，绑定本机所有 ip 接口（`0.0.0.0`）。
@@ -235,16 +244,21 @@ AI 助手只支持文本对话，在使用 AI 助手功能前，请先设置好�
 
 #### 软件更新
 
-当前暂时只通过 Github Release 分发。你可以选择或自定义加速代理源，当然，也只是普通的代理加速。
+应用从固定升级服务器读取 `update.json`，只比较内部版本号。服务器格式：
 
-设置自定义代理加速方式如下：
+```json
+{
+  "downloadUrl": "https://example.com/oba-live-tool_windows_x64.exe",
+  "internalVersion": 2
+}
+```
 
-1. 找到一个能够代理加速 github release 的站点，如 `gh-proxy.com`
-2. 查看站点提供的加速地址，如下载 1.5.20-windows-x64 版本的地址可以是 `https://gh-proxy.org/https://github.com/qiutongxue/oba-live-tool/releases/download/v1.5.20/oba-live-tool_1.5.20_windows_x64.exe`
-3. 把 `https://github.com/……` 及后面的链接删除，保留前缀 `https://gh-proxy.org/`
-4. 将前缀地址复制到自定义更新源输入框中
+发布新版本时：
 
-亲测：Github 绝对可用。`gh-proxy.com` 偶尔可用。其余的github代理基本都不可用。
+1. 递增 `package.json` 中的 `internalVersion`。
+2. 运行 `pnpm build`，生成包含新内部版本号的 NSIS 安装包。
+3. 上传安装包并确认下载地址可用。
+4. 最后更新服务器 `update.json`，使它的 `internalVersion` 与安装包一致。
 
 #### 开发者模式
 
